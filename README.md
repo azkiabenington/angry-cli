@@ -51,7 +51,17 @@ flowchart LR
 
 ## Quick Start
 
-### Linux / macOS
+### One-Line Install from GitHub Release (Wheel)
+
+Install `ipscan` directly without cloning the repo (requires Java 21+ and Python 3.10+):
+
+```bash
+pip install --user https://github.com/azkiabenington/angry-cli/releases/download/v1.0.0/angry_cli-1.0.0-py3-none-any.whl
+```
+
+*(On Ubuntu 24.04+ / Debian 12+, add `--break-system-packages` if installing outside a virtualenv.)*
+
+### Linux / macOS (From Source)
 
 1. **Clone and install** (`install.sh` installs `ipscan` to `~/.local/bin/ipscan` and adds `~/.local/bin` to `~/.bashrc` / `~/.zshrc`):
 
