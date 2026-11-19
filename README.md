@@ -53,21 +53,69 @@ flowchart LR
 
 ### Linux / macOS
 
+1. **Clone and install** (`install.sh` installs `ipscan` to `~/.local/bin/ipscan` and adds `~/.local/bin` to `~/.bashrc` / `~/.zshrc`):
+
 ```bash
 git clone https://github.com/azkiabenington/angry-cli.git
 cd angry-cli
 bash install.sh
 ```
 
+2. **Load `PATH` in the current shell** (or open a new terminal):
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+3. **Verify and run your first scan**:
+
+```bash
+# Verify Java 21+ and the bundled Angry IP Scanner engine
+ipscan --version
+ipscan backend verify
+
+# Run a quick subnet scan (prints table directly, creates no files)
+ipscan quick 192.168.1.0/24 --profile lan-audit --alive-only
+
+# Scan a specific IP range with custom TCP ports
+ipscan quick 192.168.1.1-50 --ports 22,80,443,8080 --alive-only
+
+# Output structured JSON to stdout (ideal for scripts & AI agents)
+ipscan --json quick 192.168.1.0/24 --alive-only
+
+# Or launch the interactive REPL
+ipscan
+```
+
+> [!TIP]
+> For non-interactive SSH commands (e.g. `ssh user@host ...` or `tsh ssh ...`), call `/home/<user>/.local/bin/ipscan` directly or run via `python3 -m angry_cli quick 192.168.1.0/24 --alive-only`.
+
 ### Windows (PowerShell)
+
+1. **Clone and install**:
 
 ```powershell
 git clone https://github.com/azkiabenington/angry-cli.git
 cd angry-cli
 pip install --user -e .
+```
+
+2. **Verify and run your first scan**:
+
+```powershell
+# Verify engine
 ipscan --version
 ipscan backend verify
+
+# Quick LAN scan (no files generated)
+ipscan quick 192.168.1.0/24 --profile lan-audit --alive-only
+
+# Interactive REPL
+ipscan
 ```
+
+> [!NOTE]
+> If `ipscan` is not recognized after `pip install --user -e .` on Windows, add your Python user `Scripts` directory (e.g. `%APPDATA%\Python\Python314\Scripts`) to your User `PATH` and open a new terminal, or invoke it with `python -m angry_cli ...`.
 
 ## Configuration
 
