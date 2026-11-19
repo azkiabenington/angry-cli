@@ -334,12 +334,13 @@ def find_ipscan_artifact() -> dict[str, Any]:
 
 
 def _compute_bridge_source_hash(src_dir: Path) -> str:
-    """Compute SHA-256 digest of bridge Java source files."""
+    """Compute cross-platform LF-normalized SHA-256 digest of bridge Java sources."""
     hasher = hashlib.sha256()
     for name in ("InMemoryPreferencesFactory.java", "HeadlessBridge.java"):
         p = src_dir / name
         hasher.update(name.encode("utf-8"))
-        hasher.update(p.read_bytes())
+        normalized = p.read_bytes().replace(b"\r\n", b"\n")
+        hasher.update(normalized)
     return hasher.hexdigest()
 
 

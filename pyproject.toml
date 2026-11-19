@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "angry-cli"
-version = "1.0.0"
+version = "1.0.1"
 description = "Headless CLI and interactive REPL powered by the real Angry IP Scanner Java engine."
 readme = "README.md"
 license = { file = "LICENSE" }

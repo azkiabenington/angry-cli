@@ -56,14 +56,14 @@ flowchart LR
 Install `ipscan` directly without cloning the repo (requires Java 21+ and Python 3.10+):
 
 ```bash
-pip install --user https://github.com/azkiabenington/angry-cli/releases/download/v1.0.0/angry_cli-1.0.0-py3-none-any.whl
+pip install --user https://github.com/azkiabenington/angry-cli/releases/download/v1.0.1/angry_cli-1.0.1-py3-none-any.whl
 ```
 
 *(On Ubuntu 24.04+ / Debian 12+, add `--break-system-packages` if installing outside a virtualenv.)*
 
 ### Linux / macOS (From Source)
 
-1. **Clone and install** (`install.sh` installs `ipscan` to `~/.local/bin/ipscan` and adds `~/.local/bin` to `~/.bashrc` / `~/.zshrc`):
+1. **Clone and install** (`install.sh` installs `ipscan` to `~/.local/bin/ipscan`, persists `~/.local/bin` in `~/.bashrc` / `~/.zshrc`, and links `/usr/local/bin/ipscan` if desktop `/usr/bin/ipscan` is present):
 
 ```bash
 git clone https://github.com/azkiabenington/angry-cli.git
@@ -71,11 +71,16 @@ cd angry-cli
 bash install.sh
 ```
 
-2. **Load `PATH` in the current shell** (or open a new terminal):
+2. **Load `PATH` and refresh shell command cache** in the current shell:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
+hash -r 2>/dev/null || rehash
+which ipscan
 ```
+
+> [!WARNING]
+> **If you see `org.eclipse.swt.SWTError: No more handles [gtk_init_check() failed]`**: your system already has the desktop GUI Angry IP Scanner package installed at `/usr/bin/ipscan`, and your shell ran `/usr/bin/ipscan` instead of `angry-cli`. Run `sudo ln -sf "$HOME/.local/bin/ipscan" /usr/local/bin/ipscan && hash -r 2>/dev/null || rehash` (and confirm `which ipscan` resolves to `/usr/local/bin/ipscan` or `~/.local/bin/ipscan`).
 
 3. **Verify and run your first scan**:
 
