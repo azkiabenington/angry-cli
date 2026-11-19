@@ -1,14 +1,12 @@
 """Project lifecycle and scan profile management for Angry IP Scanner CLI."""
 
-from __future__ import annotations
-
 import copy
 import json
 import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 from angry_cli.core.session import _locked_save_json
 
@@ -17,7 +15,7 @@ SCHEMA_VERSION = "1.0.0"
 
 DEFAULT_PINGER = "pinger.windows" if sys.platform == "win32" else "pinger.java"
 
-DEFAULT_SCANNER_CONFIG: dict[str, Any] = {
+DEFAULT_SCANNER_CONFIG: Dict[str, Any] = {
     "max_threads": 100,
     "thread_delay": 20,
     "scan_dead_hosts": False,
@@ -34,7 +32,7 @@ DEFAULT_SCANNER_CONFIG: dict[str, Any] = {
     "not_scanned_text": "[n/s]",
 }
 
-DEFAULT_FETCHERS: list[str] = [
+DEFAULT_FETCHERS: List[str] = [
     "fetcher.ip",
     "fetcher.ping",
     "fetcher.hostname",
@@ -44,7 +42,7 @@ DEFAULT_FETCHERS: list[str] = [
     "fetcher.comment",
 ]
 
-DEFAULT_FETCHER_PREFS: dict[str, dict[str, Any]] = {
+DEFAULT_FETCHER_PREFS: Dict[str, Dict[str, Any]] = {
     "mac": {"separator": ":"},
     "webDetect": {
         "textToSend": "HEAD /robots.txt HTTP/1.0\r\n\r\n",
@@ -63,7 +61,7 @@ DEFAULT_FETCHER_PREFS: dict[str, dict[str, Any]] = {
     },
 }
 
-DEFAULT_OPENERS: dict[str, dict[str, Any]] = {
+DEFAULT_OPENERS: Dict[str, Dict[str, Any]] = {
     "Web Browser": {"exec_string": "http://${fetcher.hostname}/", "in_terminal": False, "working_dir": None},
     "FTP": {"exec_string": "ftp://${fetcher.hostname}/", "in_terminal": False, "working_dir": None},
     "Ping": {"exec_string": "ping ${fetcher.ip}", "in_terminal": True, "working_dir": None},
@@ -75,7 +73,7 @@ DEFAULT_OPENERS: dict[str, dict[str, Any]] = {
     },
 }
 
-SCAN_PROFILES: dict[str, dict[str, Any]] = {
+SCAN_PROFILES: Dict[str, Dict[str, Any]] = {
     "default": {
         "description": "Standard Angry IP Scanner defaults (IP, Ping, Hostname, Ports, MAC, Vendor, Comments)",
         "selected_fetchers": list(DEFAULT_FETCHERS),
@@ -164,9 +162,9 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def list_profiles() -> list[dict[str, Any]]:
+def list_profiles() -> List[Dict[str, Any]]:
     """Return all built-in scan profiles with metadata."""
-    out: list[dict[str, Any]] = []
+    out: List[Dict[str, Any]] = []
     for name, spec in SCAN_PROFILES.items():
         out.append({
             "name": name,
@@ -183,7 +181,7 @@ def create_project(
     profile: str = "default",
     start_ip: str = "127.0.0.1",
     end_ip: str = "127.0.0.1",
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Create a new Angry IP Scanner project dictionary.
 
     Args:
@@ -223,7 +221,7 @@ def create_project(
     }
 
 
-def open_project(path: str) -> dict[str, Any]:
+def open_project(path: str) -> Dict[str, Any]:
     """Load and validate a project JSON file from disk."""
     p = Path(path)
     if not p.is_file():
@@ -249,7 +247,7 @@ def open_project(path: str) -> dict[str, Any]:
     return data
 
 
-def save_project(project: dict[str, Any], path: str) -> str:
+def save_project(project: Dict[str, Any], path: str) -> str:
     """Persist a project dictionary atomically to disk using file locking."""
     project["modified_at"] = _now_iso()
     abs_path = os.path.abspath(path)
@@ -257,7 +255,7 @@ def save_project(project: dict[str, Any], path: str) -> str:
     return abs_path
 
 
-def get_project_info(project: dict[str, Any], path: Optional[str] = None) -> dict[str, Any]:
+def get_project_info(project: Dict[str, Any], path: Optional[str] = None) -> Dict[str, Any]:
     """Return a concise summary of a project's configuration and latest scan."""
     last_scan = project.get("last_scan")
     scan_summary = None

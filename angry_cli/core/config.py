@@ -1,15 +1,13 @@
 """Scanner configuration and pinger management mirroring Angry IP Scanner's ScannerConfig."""
 
-from __future__ import annotations
-
 import copy
 import re
-from typing import Any
+from typing import Any, Dict, List
 
 from angry_cli.core.project import DEFAULT_SCANNER_CONFIG
 
 
-PINGER_CATALOG: dict[str, dict[str, Any]] = {
+PINGER_CATALOG: Dict[str, Dict[str, Any]] = {
     "pinger.windows": {
         "name": "Windows ICMP",
         "platform": "windows",
@@ -42,7 +40,7 @@ PINGER_CATALOG: dict[str, dict[str, Any]] = {
     },
 }
 
-_PINGER_ALIASES: dict[str, str] = {
+_PINGER_ALIASES: Dict[str, str] = {
     "windows": "pinger.windows",
     "icmp": "pinger.windows",
     "java": "pinger.java",
@@ -68,7 +66,7 @@ def normalize_pinger_id(value: str) -> str:
     raise ValueError(f"Unknown pinger '{value}'. Valid pingers: {valid}")
 
 
-def validate_port_string(port_string: str) -> list[int]:
+def validate_port_string(port_string: str) -> List[int]:
     """Validate an Angry IP Scanner port specification (e.g., ``80,443,8000-8005``).
 
     Matches ``net.azib.ipscan.core.PortIterator`` rules (ports 1..65535).
@@ -78,7 +76,7 @@ def validate_port_string(port_string: str) -> list[int]:
     if not raw:
         return []
 
-    ports: list[int] = []
+    ports: List[int] = []
     tokens = [t.strip() for t in re.split(r"[,\s]+", raw) if t.strip()]
     for token in tokens:
         if "-" in token:
@@ -101,7 +99,7 @@ def validate_port_string(port_string: str) -> list[int]:
     return ports
 
 
-def list_pingers() -> list[dict[str, Any]]:
+def list_pingers() -> List[Dict[str, Any]]:
     """Return catalog of all Angry IP Scanner pinger backends."""
     return [
         {"id": pid, **meta}
@@ -109,7 +107,7 @@ def list_pingers() -> list[dict[str, Any]]:
     ]
 
 
-def get_scanner_config(project: dict[str, Any]) -> dict[str, Any]:
+def get_scanner_config(project: Dict[str, Any]) -> Dict[str, Any]:
     """Return a copy of the project's ScannerConfig dictionary."""
     return copy.deepcopy(project["scanner_config"])
 
@@ -125,10 +123,10 @@ def _parse_bool(value: Any) -> bool:
     raise ValueError(f"Invalid boolean value: '{value}'")
 
 
-def set_scanner_config(project: dict[str, Any], updates: dict[str, Any]) -> dict[str, Any]:
+def set_scanner_config(project: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
     """Validate and apply updates to ``project['scanner_config']``."""
     cfg = project["scanner_config"]
-    applied: dict[str, Any] = {}
+    applied: Dict[str, Any] = {}
 
     for raw_key, raw_val in updates.items():
         key = raw_key.strip().replace("-", "_")
@@ -172,7 +170,7 @@ def set_scanner_config(project: dict[str, Any], updates: dict[str, Any]) -> dict
     return applied
 
 
-def reset_scanner_config(project: dict[str, Any]) -> dict[str, Any]:
+def reset_scanner_config(project: Dict[str, Any]) -> Dict[str, Any]:
     """Reset ``project['scanner_config']`` to Angry IP Scanner defaults."""
     project["scanner_config"] = copy.deepcopy(DEFAULT_SCANNER_CONFIG)
     return copy.deepcopy(project["scanner_config"])

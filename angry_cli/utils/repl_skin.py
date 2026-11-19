@@ -1,11 +1,9 @@
 """Clean interactive REPL skin for angry-cli (`ipscan`)."""
 
-from __future__ import annotations
-
 import os
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 
 _RESET = "\033[0m"
@@ -85,7 +83,7 @@ class ReplSkin:
             return pt_session.prompt(prompt).strip()
         return input(prompt).strip()
 
-    def help(self, commands: dict[str, str]) -> None:
+    def help(self, commands: Dict[str, str]) -> None:
         """Render a formatted command reference table."""
         print()
         print(self._c(_BOLD + _WHITE, "Commands:"))

@@ -11,7 +11,7 @@ if ! command -v java >/dev/null 2>&1; then
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then
-    echo "Error: Python 3.10+ is required." >&2
+    echo "Error: Python 3.6+ is required." >&2
     exit 1
 fi
 

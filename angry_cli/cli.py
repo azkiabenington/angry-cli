@@ -1,13 +1,11 @@
 """Main Click CLI and interactive REPL for angry-cli (ipscan)."""
 
-from __future__ import annotations
-
 import functools
 import json
 import os
 import shlex
 import sys
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import click
 
@@ -35,7 +33,7 @@ def get_session() -> Session:
     return _session
 
 
-def _emit(data: Any, human_lines: Optional[list[str]] = None) -> None:
+def _emit(data: Any, human_lines: Optional[List[str]] = None) -> None:
     """Emit structured JSON when --json is active, else human-readable output."""
     if _json_output:
         click.echo(json.dumps(data, indent=2, ensure_ascii=False))
@@ -47,7 +45,7 @@ def _emit(data: Any, human_lines: Optional[list[str]] = None) -> None:
         click.echo(json.dumps(data, indent=2, ensure_ascii=False))
 
 
-def _format_table(headers: list[str], rows: list[list[str]]) -> list[str]:
+def _format_table(headers: List[str], rows: List[List[str]]) -> List[str]:
     """Render a compact aligned text table."""
     if not rows:
         return ["(no rows)"]
@@ -69,7 +67,7 @@ def _format_table(headers: list[str], rows: list[list[str]]) -> list[str]:
     return lines
 
 
-def _format_scan_table(fetchers: list[dict[str, Any]], rows: list[dict[str, Any]]) -> list[str]:
+def _format_scan_table(fetchers: List[Dict[str, Any]], rows: List[Dict[str, Any]]) -> List[str]:
     """Format Angry IP Scanner scan rows using their selected fetcher headers."""
     if not fetchers:
         headers = ["IP", "Status"]
@@ -133,7 +131,10 @@ def cli(ctx: click.Context, use_json: bool, project_path: Optional[str], dry_run
         ctx.invoke(repl, project_path=project_path)
 
 
-@cli.result_callback()
+_cli_result_callback = getattr(cli, "result_callback", None) or getattr(cli, "resultcallback")
+
+
+@_cli_result_callback()
 def auto_save_on_exit(
     result: Any,
     use_json: bool,
@@ -446,9 +447,9 @@ def fetcher_available() -> None:
 @fetcher.command("select")
 @click.argument("fetcher_ids", nargs=-1, required=True)
 @handle_error
-def fetcher_select(fetcher_ids: tuple[str, ...]) -> None:
+def fetcher_select(fetcher_ids: Tuple[str, ...]) -> None:
     """Replace selected fetchers (comma-separated or multiple args; fetcher.ip is kept first)."""
-    flat: list[str] = []
+    flat: List[str] = []
     for item in fetcher_ids:
         flat.extend(part.strip() for part in item.split(",") if part.strip())
     sess = get_session()
@@ -496,7 +497,7 @@ def fetcher_move(fetcher_id: str, new_index: int) -> None:
 @click.argument("fetcher_id", type=str, required=False, default=None)
 @click.option("--set", "kv_pairs", multiple=True, help="Set key=value preference (e.g. --set separator=-).")
 @handle_error
-def fetcher_prefs(fetcher_id: Optional[str], kv_pairs: tuple[str, ...]) -> None:
+def fetcher_prefs(fetcher_id: Optional[str], kv_pairs: Tuple[str, ...]) -> None:
     """Inspect or set fetcher-specific preferences (mac, webDetect, httpSender, httpProxy)."""
     sess = get_session()
     proj = sess.get_project()
@@ -504,7 +505,7 @@ def fetcher_prefs(fetcher_id: Optional[str], kv_pairs: tuple[str, ...]) -> None:
         if not fetcher_id:
             raise ValueError("Specify a fetcher_id when using --set (e.g. `fetcher prefs mac --set separator=-`).")
         sess.snapshot(f"fetcher prefs {fetcher_id}")
-        updated: dict[str, Any] = {}
+        updated: Dict[str, Any] = {}
         for pair in kv_pairs:
             if "=" not in pair:
                 raise ValueError(f"Preference must be in key=value format: '{pair}'")
@@ -607,7 +608,7 @@ def scan_quick(
     else:
         targets_mod.set_range_target(proj, spec, spec)
 
-    cfg_updates: dict[str, Any] = {}
+    cfg_updates: Dict[str, Any] = {}
     if ports is not None:
         cfg_updates["port_string"] = ports
     if pinger is not None:
@@ -655,7 +656,7 @@ def scan_quick(
         lines.append("")
         lines.append(f"Exported {export_result['exported_rows']} rows -> {export_result['output']} ({export_result['file_size']} bytes)")
 
-    payload: dict[str, Any] = {"ok": True, "scan": record}
+    payload: Dict[str, Any] = {"ok": True, "scan": record}
     if export_result:
         payload["export"] = export_result
     _emit(payload, lines)
@@ -666,7 +667,7 @@ def scan_quick(
 @click.option("--alive-only", is_flag=True, default=False, help="Rescan only hosts that were alive in the last scan.")
 @click.option("--timeout", type=int, default=300, help="Maximum scan timeout in seconds.")
 @handle_error
-def scan_rescan(ips: tuple[str, ...], alive_only: bool, timeout: int) -> None:
+def scan_rescan(ips: Tuple[str, ...], alive_only: bool, timeout: int) -> None:
     """Rescan specific IP addresses (or previous results) using Angry IP Scanner's RescanFeeder."""
     sess = get_session()
     proj = sess.get_project()
@@ -1131,7 +1132,7 @@ def backend_verify() -> None:
 @handle_error
 def backend_native_cli(
     feeder: str,
-    feeder_args: tuple[str, ...],
+    feeder_args: Tuple[str, ...],
     output_path: str,
     append: bool,
     timeout: int,

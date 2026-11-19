@@ -1,12 +1,10 @@
 """Fetcher catalog, selection, ordering, and preference management for Angry IP Scanner."""
 
-from __future__ import annotations
-
 import copy
-from typing import Any
+from typing import Any, Dict, List, Optional, Set
 
 
-FETCHER_CATALOG: dict[str, dict[str, Any]] = {
+FETCHER_CATALOG: Dict[str, Dict[str, Any]] = {
     "fetcher.ip": {
         "name": "IP",
         "mandatory": True,
@@ -93,7 +91,7 @@ FETCHER_CATALOG: dict[str, dict[str, Any]] = {
     },
 }
 
-_FETCHER_ALIASES: dict[str, str] = {
+_FETCHER_ALIASES: Dict[str, str] = {
     "ip": "fetcher.ip",
     "ping": "fetcher.ping",
     "ttl": "fetcher.ping.ttl",
@@ -136,7 +134,7 @@ def normalize_fetcher_id(fetcher_id: str) -> str:
     raise ValueError(f"Unknown fetcher '{fetcher_id}'. Available fetchers: {valid}")
 
 
-def list_available_fetchers() -> list[dict[str, Any]]:
+def list_available_fetchers() -> List[Dict[str, Any]]:
     """Return metadata for all 14 Angry IP Scanner fetchers."""
     return [
         {"id": fid, **meta}
@@ -144,18 +142,18 @@ def list_available_fetchers() -> list[dict[str, Any]]:
     ]
 
 
-def list_selected_fetchers(project: dict[str, Any]) -> list[dict[str, Any]]:
+def list_selected_fetchers(project: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Return ordered list of currently selected fetchers in the project."""
-    out: list[dict[str, Any]] = []
+    out: List[Dict[str, Any]] = []
     for idx, fid in enumerate(project.get("selected_fetchers", [])):
         meta = FETCHER_CATALOG.get(fid, {"name": fid, "mandatory": False, "pref_node": None, "description": ""})
         out.append({"index": idx, "id": fid, **meta})
     return out
 
 
-def select_fetchers(project: dict[str, Any], fetcher_ids: list[str]) -> list[str]:
+def select_fetchers(project: Dict[str, Any], fetcher_ids: List[str]) -> List[str]:
     """Replace the project's selected fetchers list, ensuring ``fetcher.ip`` is first."""
-    normalized: list[str] = []
+    normalized: List[str] = []
     for raw in fetcher_ids:
         fid = normalize_fetcher_id(raw)
         if fid not in normalized:
@@ -170,10 +168,10 @@ def select_fetchers(project: dict[str, Any], fetcher_ids: list[str]) -> list[str
     return list(normalized)
 
 
-def add_fetcher(project: dict[str, Any], fetcher_id: str, position: int | None = None) -> list[str]:
+def add_fetcher(project: Dict[str, Any], fetcher_id: str, position: Optional[int] = None) -> List[str]:
     """Add a fetcher to the selected list if not already present."""
     fid = normalize_fetcher_id(fetcher_id)
-    selected: list[str] = list(project.get("selected_fetchers", ["fetcher.ip"]))
+    selected: List[str] = list(project.get("selected_fetchers", ["fetcher.ip"]))
     if fid in selected:
         return selected
 
@@ -187,12 +185,12 @@ def add_fetcher(project: dict[str, Any], fetcher_id: str, position: int | None =
     return list(selected)
 
 
-def remove_fetcher(project: dict[str, Any], fetcher_id: str) -> list[str]:
+def remove_fetcher(project: Dict[str, Any], fetcher_id: str) -> List[str]:
     """Remove a non-mandatory fetcher from the selected list."""
     fid = normalize_fetcher_id(fetcher_id)
     if fid == "fetcher.ip":
         raise ValueError("Cannot remove mandatory fetcher 'fetcher.ip'.")
-    selected: list[str] = list(project.get("selected_fetchers", ["fetcher.ip"]))
+    selected: List[str] = list(project.get("selected_fetchers", ["fetcher.ip"]))
     if fid not in selected:
         raise ValueError(f"Fetcher '{fid}' is not currently selected.")
     selected.remove(fid)
@@ -200,12 +198,12 @@ def remove_fetcher(project: dict[str, Any], fetcher_id: str) -> list[str]:
     return list(selected)
 
 
-def move_fetcher(project: dict[str, Any], fetcher_id: str, new_index: int) -> list[str]:
+def move_fetcher(project: Dict[str, Any], fetcher_id: str, new_index: int) -> List[str]:
     """Move a selected fetcher to a new column index (index 0 is reserved for fetcher.ip)."""
     fid = normalize_fetcher_id(fetcher_id)
     if fid == "fetcher.ip":
         raise ValueError("Mandatory fetcher 'fetcher.ip' must remain at index 0.")
-    selected: list[str] = list(project.get("selected_fetchers", ["fetcher.ip"]))
+    selected: List[str] = list(project.get("selected_fetchers", ["fetcher.ip"]))
     if fid not in selected:
         raise ValueError(f"Fetcher '{fid}' is not currently selected.")
     if new_index < 1 or new_index >= len(selected):
@@ -216,7 +214,7 @@ def move_fetcher(project: dict[str, Any], fetcher_id: str, new_index: int) -> li
     return list(selected)
 
 
-def get_fetcher_prefs(project: dict[str, Any], fetcher_id: str | None = None) -> dict[str, Any]:
+def get_fetcher_prefs(project: Dict[str, Any], fetcher_id: Optional[str] = None) -> Dict[str, Any]:
     """Return fetcher-specific preferences (all or for a single fetcher)."""
     all_prefs = project.get("fetcher_prefs", {})
     if fetcher_id is None:
@@ -228,7 +226,7 @@ def get_fetcher_prefs(project: dict[str, Any], fetcher_id: str | None = None) ->
     return copy.deepcopy(all_prefs.get(node, {}))
 
 
-def set_fetcher_pref(project: dict[str, Any], fetcher_id: str, key: str, value: Any) -> dict[str, Any]:
+def set_fetcher_pref(project: Dict[str, Any], fetcher_id: str, key: str, value: Any) -> Dict[str, Any]:
     """Set a fetcher-specific preference key (e.g., ``mac`` separator or ``webDetect`` regex)."""
     fid = normalize_fetcher_id(fetcher_id)
     node = FETCHER_CATALOG[fid]["pref_node"]

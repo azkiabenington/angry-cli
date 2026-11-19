@@ -4,7 +4,7 @@
 
 **Headless command-line interface and interactive REPL powered directly by the real Angry IP Scanner Java engine.**
 
-![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue.svg)
+![Python](https://img.shields.io/badge/python-%3E%3D3.6-blue.svg)
 ![Java](https://img.shields.io/badge/java-%3E%3D21-orange.svg)
 ![Engine](https://img.shields.io/badge/engine-Angry%20IP%20Scanner%203.12.2-brightgreen.svg)
 ![License](https://img.shields.io/badge/license-GPL--2.0-yellow.svg)
@@ -44,7 +44,7 @@ flowchart LR
 ## Prerequisites
 
 - **Java 21+** (`openjdk-21-jdk` / Temurin 21 / BellSoft Liberica 21)
-- **Python 3.10+**
+- **Python 3.6+** (tested from Ubuntu 18.04 Python 3.6 + Click 6.7 up to Python 3.14)
 
 > [!NOTE]
 > `angry-cli` bundles the compiled Angry IP Scanner core JAR (`angry_cli/libs/ipscan-3.12.2.jar`) and pre-compiled Java 21 headless bridge classes, so it works out of the box on Linux, Windows, and macOS as long as Java 21+ is installed.
@@ -53,10 +53,10 @@ flowchart LR
 
 ### One-Line Install from GitHub Release (Wheel)
 
-Install `ipscan` directly without cloning the repo (requires Java 21+ and Python 3.10+):
+Install `ipscan` directly without cloning the repo (requires Java 21+ and Python 3.6+):
 
 ```bash
-pip install --user https://github.com/azkiabenington/angry-cli/releases/download/v1.0.2/angry_cli-1.0.2-py3-none-any.whl
+pip install --user https://github.com/azkiabenington/angry-cli/releases/download/v1.0.3/angry_cli-1.0.3-py3-none-any.whl
 ```
 
 *(On Ubuntu 24.04+ / Debian 12+, add `--break-system-packages` if installing outside a virtualenv.)*

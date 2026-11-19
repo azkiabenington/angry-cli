@@ -1,19 +1,17 @@
 """Export pipeline delegating to Angry IP Scanner's real ExporterRegistry & ExportProcessor."""
 
-from __future__ import annotations
-
 import copy
 import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 from angry_cli.core.results import _require_last_scan, filter_results
 from angry_cli.utils import backend as ipscan_backend
 
 
-EXPORT_PRESETS: dict[str, dict[str, Any]] = {
+EXPORT_PRESETS: Dict[str, Dict[str, Any]] = {
     "csv": {
         "extension": "csv",
         "exporter_id": "exporter.csv",
@@ -59,7 +57,7 @@ EXPORT_PRESETS: dict[str, dict[str, Any]] = {
 }
 
 
-def list_export_presets() -> list[dict[str, Any]]:
+def list_export_presets() -> List[Dict[str, Any]]:
     """Return all supported export formats and their capabilities."""
     return [{"name": k, **v} for k, v in EXPORT_PRESETS.items()]
 
@@ -82,13 +80,13 @@ def _infer_preset(output_path: str, preset: Optional[str]) -> str:
 
 
 def render(
-    project: dict[str, Any],
+    project: Dict[str, Any],
     output_path: str,
     preset: Optional[str] = None,
     filter_mode: str = "all",
     append: bool = False,
     overwrite: bool = False,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Export project scan results via Angry IP Scanner's real exporters (or JSON).
 
     For ``csv``, ``txt``, ``xml``, ``lst``, and ``sql``, this delegates directly
@@ -196,7 +194,7 @@ def render(
     }
 
 
-def import_txt_results(project: dict[str, Any], txt_path: str) -> dict[str, Any]:
+def import_txt_results(project: Dict[str, Any], txt_path: str) -> Dict[str, Any]:
     """Import an Angry IP Scanner ``.txt`` export file back into project results.
 
     Mirrors ``net.azib.ipscan.exporters.TXTExporter.importResults()``.
@@ -224,9 +222,9 @@ def import_txt_results(project: dict[str, Any], txt_path: str) -> dict[str, Any]
 
     lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
     feeder_info = str(p.name)
-    columns: list[str] = []
-    fetcher_ids: list[str] = []
-    rows: list[dict[str, Any]] = []
+    columns: List[str] = []
+    fetcher_ids: List[str] = []
+    rows: List[Dict[str, Any]] = []
     header_found = False
 
     for line in lines:

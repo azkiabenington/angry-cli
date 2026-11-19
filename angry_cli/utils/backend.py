@@ -9,8 +9,6 @@ Exporters headlessly with isolated in-memory preferences.
 No network scanning or native export format is reimplemented in Python.
 """
 
-from __future__ import annotations
-
 import glob
 import hashlib
 import json
@@ -22,7 +20,7 @@ import sys
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 _BRIDGE_MAIN_CLASS = "org.angrycli.bridge.HeadlessBridge"
@@ -39,10 +37,10 @@ def _bridge_source_dir() -> Path:
     return _package_dir() / "bridge"
 
 
-def _repo_root_candidates() -> list[Path]:
+def _repo_root_candidates() -> List[Path]:
     """Return candidate Angry IP Scanner source/deployment root directories."""
     pkg = _package_dir()
-    candidates: list[Path] = []
+    candidates: List[Path] = []
     # Standard layout: <repo>/agent-harness/angry_cli
     harness_parent = pkg.parent.parent.parent
     if (harness_parent / "build.gradle").is_file() or (harness_parent / "build" / "libs").is_dir():
@@ -60,8 +58,8 @@ def _parse_java_major(java_exe: str) -> Optional[int]:
     try:
         proc = subprocess.run(
             [java_exe, "-version"],
-            capture_output=True,
-            text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            universal_newlines=True,
             timeout=10,
         )
         output = (proc.stderr or "") + "\n" + (proc.stdout or "")
@@ -76,9 +74,9 @@ def _parse_java_major(java_exe: str) -> Optional[int]:
         return None
 
 
-def _candidate_java_homes() -> list[Path]:
+def _candidate_java_homes() -> List[Path]:
     """Collect candidate JDK/JRE home directories across Windows, Linux, macOS."""
-    homes: list[Path] = []
+    homes: List[Path] = []
     env_home = os.environ.get("JAVA_HOME")
     if env_home:
         homes.append(Path(env_home))
@@ -117,7 +115,7 @@ def _candidate_java_homes() -> list[Path]:
     return homes
 
 
-def find_java(min_major: int = 21, require_javac: bool = False) -> dict[str, Any]:
+def find_java(min_major: int = 21, require_javac: bool = False) -> Dict[str, Any]:
     """Locate a Java 21+ runtime (and optionally javac compiler).
 
     Args:
@@ -131,8 +129,8 @@ def find_java(min_major: int = 21, require_javac: bool = False) -> dict[str, Any
         RuntimeError: If no suitable Java runtime is installed.
     """
     exe_suffix = ".exe" if sys.platform == "win32" else ""
-    seen: set[str] = set()
-    candidates: list[Path] = []
+    seen: Set[str] = set()
+    candidates: List[Path] = []
 
     env_java = os.environ.get("IPSCAN_JAVA")
     if env_java:
@@ -145,7 +143,7 @@ def find_java(min_major: int = 21, require_javac: bool = False) -> dict[str, Any
     if which_java:
         candidates.append(Path(which_java))
 
-    best: Optional[dict[str, Any]] = None
+    best: Optional[Dict[str, Any]] = None
     for cand in candidates:
         try:
             resolved = str(cand.resolve())
@@ -220,7 +218,7 @@ def _find_jna_jar() -> Optional[Path]:
     return None
 
 
-def find_ipscan_artifact() -> dict[str, Any]:
+def find_ipscan_artifact() -> Dict[str, Any]:
     """Locate the real Angry IP Scanner JAR/executable and companion classpath.
 
     Search order:
@@ -237,7 +235,7 @@ def find_ipscan_artifact() -> dict[str, Any]:
     Raises:
         RuntimeError: If Angry IP Scanner is not built or installed.
     """
-    candidates: list[tuple[str, Path]] = []
+    candidates: List[Tuple[str, Path]] = []
 
     env_jar = os.environ.get("IPSCAN_JAR")
     if env_jar:
@@ -299,7 +297,7 @@ def find_ipscan_artifact() -> dict[str, Any]:
         if not _jar_has_entry(artifact, "net/azib/ipscan/"):
             continue
 
-        cp: list[str] = [str(artifact)]
+        cp: List[str] = [str(artifact)]
         has_jna = _jar_has_entry(artifact, "com/sun/jna/")
         if not has_jna:
             jna_jar = _find_jna_jar()
@@ -362,7 +360,7 @@ def _classes_valid(classes_dir: Path, expected_hash: str) -> bool:
     return bridge_cls.stat().st_mtime >= src_mtime
 
 
-def ensure_bridge_compiled(ipscan_classpath: list[str]) -> str:
+def ensure_bridge_compiled(ipscan_classpath: List[str]) -> str:
     """Ensure HeadlessBridge Java classes are compiled and up to date.
 
     Returns:
@@ -400,7 +398,7 @@ def ensure_bridge_compiled(ipscan_classpath: list[str]) -> str:
         str(src_dir / "InMemoryPreferencesFactory.java"),
         str(src_dir / "HeadlessBridge.java"),
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, timeout=60)
     if proc.returncode != 0:
         raise RuntimeError(
             f"Failed to compile Angry IP Scanner HeadlessBridge:\n"
@@ -410,7 +408,7 @@ def ensure_bridge_compiled(ipscan_classpath: list[str]) -> str:
     return str(target_dir)
 
 
-def _invoke_bridge(action: str, payload: Optional[dict[str, Any]] = None, timeout: int = 300) -> dict[str, Any]:
+def _invoke_bridge(action: str, payload: Optional[Dict[str, Any]] = None, timeout: int = 300) -> Dict[str, Any]:
     """Execute HeadlessBridge with the real Angry IP Scanner engine."""
     java_info = find_java(min_major=21, require_javac=False)
     artifact_info = find_ipscan_artifact()
@@ -438,8 +436,8 @@ def _invoke_bridge(action: str, payload: Optional[dict[str, Any]] = None, timeou
 
         proc = subprocess.run(
             cmd,
-            capture_output=True,
-            text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            universal_newlines=True,
             encoding="utf-8",
             errors="replace",
             timeout=timeout,
@@ -447,7 +445,7 @@ def _invoke_bridge(action: str, payload: Optional[dict[str, Any]] = None, timeou
 
         stdout = (proc.stdout or "").strip()
         # Parse last JSON line in stdout in case any JVM notice preceded it
-        parsed: Optional[dict[str, Any]] = None
+        parsed: Optional[Dict[str, Any]] = None
         for line in reversed(stdout.splitlines()):
             line = line.strip()
             if line.startswith("{") and line.endswith("}"):
@@ -478,7 +476,7 @@ def _invoke_bridge(action: str, payload: Optional[dict[str, Any]] = None, timeou
                 pass
 
 
-def get_backend_info() -> dict[str, Any]:
+def get_backend_info() -> Dict[str, Any]:
     """Query the real Angry IP Scanner engine for version, pingers, fetchers, exporters."""
     java_info = find_java(min_major=21)
     artifact_info = find_ipscan_artifact()
@@ -495,25 +493,25 @@ def get_backend_info() -> dict[str, Any]:
     return bridge_info
 
 
-def run_scan(request: dict[str, Any], timeout: int = 300) -> dict[str, Any]:
+def run_scan(request: Dict[str, Any], timeout: int = 300) -> Dict[str, Any]:
     """Execute a real network scan through Angry IP Scanner's engine."""
     return _invoke_bridge("scan", payload=request, timeout=timeout)
 
 
-def run_export(request: dict[str, Any], timeout: int = 120) -> dict[str, Any]:
+def run_export(request: Dict[str, Any], timeout: int = 120) -> Dict[str, Any]:
     """Export scan results via Angry IP Scanner's real ExportProcessor and Exporters."""
     return _invoke_bridge("export", payload=request, timeout=timeout)
 
 
 def run_native_cli(
     feeder_flag: str,
-    feeder_args: list[str],
+    feeder_args: List[str],
     output_path: Optional[str] = None,
     auto_start: bool = True,
     auto_quit: bool = True,
     append: bool = False,
     timeout: int = 180,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Invoke Angry IP Scanner's original CommandLineProcessor directly.
 
     Note: Angry IP Scanner's native CLI initializes SWT MainWindow even with
@@ -531,7 +529,7 @@ def run_native_cli(
     if append:
         flags += "a"
 
-    cli_args: list[str] = []
+    cli_args: List[str] = []
     if flags:
         cli_args.append(f"-{flags}")
     cli_args.append(f"-f:{feeder_flag}")
@@ -550,8 +548,8 @@ def run_native_cli(
 
     proc = subprocess.run(
         cmd,
-        capture_output=True,
-        text=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        universal_newlines=True,
         encoding="utf-8",
         errors="replace",
         timeout=timeout,

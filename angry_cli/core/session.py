@@ -1,12 +1,10 @@
 """Stateful session management with undo/redo and locked JSON persistence."""
 
-from __future__ import annotations
-
 import copy
 import json
 import os
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def _locked_save_json(path: str, data: Any, **dump_kwargs: Any) -> None:
@@ -43,19 +41,19 @@ class Session:
     """In-memory project session with deep-copy undo/redo stack and disk persistence."""
 
     def __init__(self, max_history: int = 50) -> None:
-        self._project: Optional[dict[str, Any]] = None
+        self._project: Optional[Dict[str, Any]] = None
         self.project_path: Optional[str] = None
         self._modified: bool = False
-        self._undo_stack: list[tuple[str, dict[str, Any]]] = []
-        self._redo_stack: list[tuple[str, dict[str, Any]]] = []
-        self._history_log: list[dict[str, Any]] = []
+        self._undo_stack: List[Tuple[str, Dict[str, Any]]] = []
+        self._redo_stack: List[Tuple[str, Dict[str, Any]]] = []
+        self._history_log: List[Dict[str, Any]] = []
         self._max_history: int = max_history
 
     def has_project(self) -> bool:
         """Return True if a project is currently loaded."""
         return self._project is not None
 
-    def get_project(self) -> dict[str, Any]:
+    def get_project(self) -> Dict[str, Any]:
         """Return the active project dictionary, raising if none is open."""
         if self._project is None:
             raise RuntimeError(
@@ -64,7 +62,7 @@ class Session:
             )
         return self._project
 
-    def set_project(self, project: dict[str, Any], path: Optional[str] = None, modified: bool = False) -> None:
+    def set_project(self, project: Dict[str, Any], path: Optional[str] = None, modified: bool = False) -> None:
         """Load a project into the session, resetting undo/redo stacks."""
         self._project = project
         self.project_path = os.path.abspath(path) if path else None
@@ -85,7 +83,7 @@ class Session:
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         })
 
-    def undo(self) -> dict[str, Any]:
+    def undo(self) -> Dict[str, Any]:
         """Revert the most recent mutation."""
         if not self._undo_stack:
             raise RuntimeError("Nothing to undo.")
@@ -100,7 +98,7 @@ class Session:
             "redo_available": len(self._redo_stack),
         }
 
-    def redo(self) -> dict[str, Any]:
+    def redo(self) -> Dict[str, Any]:
         """Reapply the most recently undone mutation."""
         if not self._redo_stack:
             raise RuntimeError("Nothing to redo.")
@@ -128,11 +126,11 @@ class Session:
         self._modified = False
         return abs_target
 
-    def history(self) -> list[dict[str, Any]]:
+    def history(self) -> List[Dict[str, Any]]:
         """Return the chronological log of mutations performed in this session."""
         return list(self._history_log)
 
-    def status(self) -> dict[str, Any]:
+    def status(self) -> Dict[str, Any]:
         """Return structured status of the current session."""
         return {
             "has_project": self.has_project(),

@@ -1,10 +1,8 @@
 """Scan orchestration invoking the real Angry IP Scanner Java backend."""
 
-from __future__ import annotations
-
 import copy
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 from angry_cli.utils import backend as ipscan_backend
 
@@ -14,16 +12,16 @@ def _now_iso() -> str:
 
 
 def build_bridge_request(
-    project: dict[str, Any],
-    target_override: Optional[dict[str, Any]] = None,
-    export_spec: Optional[dict[str, Any]] = None,
-) -> dict[str, Any]:
+    project: Dict[str, Any],
+    target_override: Optional[Dict[str, Any]] = None,
+    export_spec: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """Build a HeadlessBridge scan request payload from a project dictionary."""
     target = copy.deepcopy(target_override if target_override is not None else project.get("target"))
     if not target or "feeder" not in target:
         raise ValueError("Project has no valid scan target configured.")
 
-    req: dict[str, Any] = {
+    req: Dict[str, Any] = {
         "target": target,
         "scanner_config": copy.deepcopy(project.get("scanner_config", {})),
         "selected_fetchers": list(project.get("selected_fetchers", ["fetcher.ip"])),
@@ -36,11 +34,11 @@ def build_bridge_request(
 
 
 def execute_scan(
-    project: dict[str, Any],
-    target_override: Optional[dict[str, Any]] = None,
-    export_spec: Optional[dict[str, Any]] = None,
+    project: Dict[str, Any],
+    target_override: Optional[Dict[str, Any]] = None,
+    export_spec: Optional[Dict[str, Any]] = None,
     timeout: int = 300,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Execute a real Angry IP Scanner scan and store results on the project.
 
     Args:
@@ -55,7 +53,7 @@ def execute_scan(
     req = build_bridge_request(project, target_override=target_override, export_spec=export_spec)
     raw = ipscan_backend.run_scan(req, timeout=timeout)
 
-    scan_record: dict[str, Any] = {
+    scan_record: Dict[str, Any] = {
         "timestamp": _now_iso(),
         "engine": raw.get("engine"),
         "feeder_name": raw.get("feeder_name"),
@@ -85,13 +83,13 @@ def execute_scan(
 
 
 def execute_rescan(
-    project: dict[str, Any],
-    ips: Optional[list[str]] = None,
+    project: Dict[str, Any],
+    ips: Optional[List[str]] = None,
     only_alive: bool = False,
     timeout: int = 300,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Rescan specific IP addresses using Angry IP Scanner's real RescanFeeder."""
-    target_ips: list[str] = []
+    target_ips: List[str] = []
     if ips:
         target_ips = [ip.strip() for ip in ips if ip.strip()]
     else:
@@ -113,7 +111,7 @@ def execute_rescan(
     return execute_scan(project, target_override=rescan_target, timeout=timeout)
 
 
-def get_scan_status(project: dict[str, Any]) -> dict[str, Any]:
+def get_scan_status(project: Dict[str, Any]) -> Dict[str, Any]:
     """Return summary of the latest scan and historical scan runs in this project."""
     last_scan = project.get("last_scan")
     if not isinstance(last_scan, dict):

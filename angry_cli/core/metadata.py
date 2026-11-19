@@ -1,10 +1,8 @@
 """Comments, Favorites, and Openers management mirroring Angry IP Scanner's config modules."""
 
-from __future__ import annotations
-
 import copy
 import re
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from angry_cli.core.results import get_host_detail
 from angry_cli.core.targets import set_file_target, set_random_target, set_range_target
@@ -12,12 +10,12 @@ from angry_cli.core.targets import set_file_target, set_random_target, set_range
 
 # --- Comments (CommentsConfig) ---
 
-def list_comments(project: dict[str, Any]) -> dict[str, str]:
+def list_comments(project: Dict[str, Any]) -> Dict[str, str]:
     """Return all IP/MAC host comments configured in the project."""
     return copy.deepcopy(project.get("comments", {}))
 
 
-def set_comment(project: dict[str, Any], key: str, comment: str) -> dict[str, str]:
+def set_comment(project: Dict[str, Any], key: str, comment: str) -> Dict[str, str]:
     """Attach a persistent comment to an IP address or MAC address."""
     clean_key = key.strip()
     if not clean_key:
@@ -30,7 +28,7 @@ def set_comment(project: dict[str, Any], key: str, comment: str) -> dict[str, st
     return {"key": clean_key, "comment": comments.get(clean_key, "")}
 
 
-def remove_comment(project: dict[str, Any], key: str) -> dict[str, Any]:
+def remove_comment(project: Dict[str, Any], key: str) -> Dict[str, Any]:
     """Remove a stored comment for an IP or MAC address."""
     clean_key = key.strip()
     comments = project.setdefault("comments", {})
@@ -42,12 +40,12 @@ def remove_comment(project: dict[str, Any], key: str) -> dict[str, Any]:
 
 # --- Favorites (FavoritesConfig) ---
 
-def list_favorites(project: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def list_favorites(project: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     """Return all saved favorite feeder targets."""
     return copy.deepcopy(project.get("favorites", {}))
 
 
-def add_favorite(project: dict[str, Any], name: str, target: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+def add_favorite(project: Dict[str, Any], name: str, target: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Save the current (or provided) target feeder configuration as a named favorite."""
     clean_name = name.strip()
     if not clean_name:
@@ -60,7 +58,7 @@ def add_favorite(project: dict[str, Any], name: str, target: Optional[dict[str, 
     return {"name": clean_name, "target": copy.deepcopy(fav_target)}
 
 
-def remove_favorite(project: dict[str, Any], name: str) -> dict[str, Any]:
+def remove_favorite(project: Dict[str, Any], name: str) -> Dict[str, Any]:
     """Remove a named favorite target."""
     clean_name = name.strip()
     favorites = project.setdefault("favorites", {})
@@ -70,7 +68,7 @@ def remove_favorite(project: dict[str, Any], name: str) -> dict[str, Any]:
     return {"removed": clean_name, "target": old}
 
 
-def use_favorite(project: dict[str, Any], name: str) -> dict[str, Any]:
+def use_favorite(project: Dict[str, Any], name: str) -> Dict[str, Any]:
     """Apply a saved favorite as the project's active feeder target."""
     clean_name = name.strip()
     favorites = project.get("favorites", {})
@@ -89,18 +87,18 @@ def use_favorite(project: dict[str, Any], name: str) -> dict[str, Any]:
 
 # --- Openers (OpenersConfig) ---
 
-def list_openers(project: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def list_openers(project: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     """Return all configured host openers."""
     return copy.deepcopy(project.get("openers", {}))
 
 
 def add_opener(
-    project: dict[str, Any],
+    project: Dict[str, Any],
     name: str,
     exec_string: str,
     in_terminal: bool = False,
     working_dir: Optional[str] = None,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Add or update an opener template (supports ``${fetcher.ip}``, ``${fetcher.hostname}``, etc.)."""
     clean_name = name.strip()
     if not clean_name:
@@ -117,7 +115,7 @@ def add_opener(
     return {"name": clean_name, **copy.deepcopy(entry)}
 
 
-def remove_opener(project: dict[str, Any], name: str) -> dict[str, Any]:
+def remove_opener(project: Dict[str, Any], name: str) -> Dict[str, Any]:
     """Delete a configured opener by name."""
     clean_name = name.strip()
     openers = project.setdefault("openers", {})
@@ -127,7 +125,7 @@ def remove_opener(project: dict[str, Any], name: str) -> dict[str, Any]:
     return {"removed": clean_name, "opener": old}
 
 
-def render_opener(project: dict[str, Any], name: str, ip: str) -> dict[str, Any]:
+def render_opener(project: Dict[str, Any], name: str, ip: str) -> Dict[str, Any]:
     """Expand an opener's ``${fetcher.*}`` placeholders against a scanned host's values."""
     openers = project.get("openers", {})
     if name not in openers:
@@ -137,7 +135,7 @@ def render_opener(project: dict[str, Any], name: str, ip: str) -> dict[str, Any]
     template = opener["exec_string"]
     values = host.get("values", {})
 
-    def _replace(match: re.Match[str]) -> str:
+    def _replace(match: Any) -> str:
         key = match.group(1)
         if key == "fetcher.ip":
             return host["ip"]

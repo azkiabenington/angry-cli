@@ -1,15 +1,13 @@
 """Result inspection, filtering, searching, sorting, and statistics for scan results."""
 
-from __future__ import annotations
-
 import copy
 import ipaddress
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from angry_cli.core.fetchers import normalize_fetcher_id
 
 
-def _require_last_scan(project: dict[str, Any]) -> dict[str, Any]:
+def _require_last_scan(project: Dict[str, Any]) -> Dict[str, Any]:
     last_scan = project.get("last_scan")
     if not isinstance(last_scan, dict):
         raise RuntimeError("No scan results available in project. Run `scan run` first.")
@@ -17,10 +15,10 @@ def _require_last_scan(project: dict[str, Any]) -> dict[str, Any]:
 
 
 def list_results(
-    project: dict[str, Any],
+    project: Dict[str, Any],
     limit: Optional[int] = None,
     offset: int = 0,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Return scan result rows with fetcher column metadata."""
     scan = _require_last_scan(project)
     rows = scan.get("results", [])
@@ -34,7 +32,7 @@ def list_results(
     }
 
 
-def get_host_detail(project: dict[str, Any], ip: str) -> dict[str, Any]:
+def get_host_detail(project: Dict[str, Any], ip: str) -> Dict[str, Any]:
     """Return full fetcher details for a single scanned IP address."""
     scan = _require_last_scan(project)
     target = ip.strip()
@@ -45,11 +43,11 @@ def get_host_detail(project: dict[str, Any], ip: str) -> dict[str, Any]:
 
 
 def filter_results(
-    project: dict[str, Any],
+    project: Dict[str, Any],
     status: str = "all",
     port: Optional[int] = None,
     has_mac: bool = False,
-) -> list[dict[str, Any]]:
+) -> List[Dict[str, Any]]:
     """Filter scan results by host status, open port, or MAC availability."""
     scan = _require_last_scan(project)
     mode = status.strip().lower()
@@ -57,7 +55,7 @@ def filter_results(
     if mode not in valid_modes:
         raise ValueError(f"Invalid status filter '{status}'. Valid values: {', '.join(sorted(valid_modes))}")
 
-    matched: list[dict[str, Any]] = []
+    matched: List[Dict[str, Any]] = []
     for row in scan.get("results", []):
         rtype = row.get("type", "UNKNOWN")
         if mode == "alive" and rtype not in ("ALIVE", "WITH_PORTS"):
@@ -98,14 +96,14 @@ def _port_present(ports_text: str, target_port: int) -> bool:
     return False
 
 
-def search_results(project: dict[str, Any], query: str) -> list[dict[str, Any]]:
+def search_results(project: Dict[str, Any], query: str) -> List[Dict[str, Any]]:
     """Case-insensitive substring search across all fetcher values (mirrors ScanningResultList.findText)."""
     scan = _require_last_scan(project)
     needle = query.strip().lower()
     if not needle:
         raise ValueError("Search query cannot be empty.")
 
-    matched: list[dict[str, Any]] = []
+    matched: List[Dict[str, Any]] = []
     for row in scan.get("results", []):
         if needle in str(row.get("ip", "")).lower():
             matched.append(copy.deepcopy(row))
@@ -116,13 +114,13 @@ def search_results(project: dict[str, Any], query: str) -> list[dict[str, Any]]:
     return matched
 
 
-def sort_results(project: dict[str, Any], by: str = "fetcher.ip", descending: bool = False) -> list[dict[str, Any]]:
+def sort_results(project: Dict[str, Any], by: str = "fetcher.ip", descending: bool = False) -> List[Dict[str, Any]]:
     """Sort stored scan results in place by any fetcher column (mirrors ScanningResultList.sort)."""
     scan = _require_last_scan(project)
     fid = normalize_fetcher_id(by)
     rows = scan.get("results", [])
 
-    def _sort_key(row: dict[str, Any]) -> tuple[int, Any]:
+    def _sort_key(row: Dict[str, Any]) -> Tuple[int, Any]:
         if fid == "fetcher.ip":
             try:
                 return (0, int(ipaddress.ip_address(row["ip"])))
@@ -146,7 +144,7 @@ def sort_results(project: dict[str, Any], by: str = "fetcher.ip", descending: bo
     return copy.deepcopy(rows)
 
 
-def get_result_stats(project: dict[str, Any]) -> dict[str, Any]:
+def get_result_stats(project: Dict[str, Any]) -> Dict[str, Any]:
     """Compute aggregate statistics over the latest scan results."""
     scan = _require_last_scan(project)
     rows = scan.get("results", [])
@@ -154,7 +152,7 @@ def get_result_stats(project: dict[str, Any]) -> dict[str, Any]:
     with_ports = sum(1 for r in rows if r.get("type") == "WITH_PORTS")
     dead = sum(1 for r in rows if r.get("type") in ("DEAD", "UNKNOWN"))
 
-    open_port_counts: dict[int, int] = {}
+    open_port_counts: Dict[int, int] = {}
     for row in rows:
         ports_text = str(row.get("values", {}).get("fetcher.ports", "") or "")
         if ports_text and not ports_text.startswith("["):
@@ -185,7 +183,7 @@ def get_result_stats(project: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def clear_results(project: dict[str, Any]) -> dict[str, Any]:
+def clear_results(project: Dict[str, Any]) -> Dict[str, Any]:
     """Clear the latest scan results from the project."""
     prev = len(project.get("last_scan", {}).get("results", [])) if isinstance(project.get("last_scan"), dict) else 0
     project["last_scan"] = None
