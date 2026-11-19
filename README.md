@@ -56,14 +56,14 @@ flowchart LR
 Install `ipscan` directly without cloning the repo (requires Java 21+ and Python 3.10+):
 
 ```bash
-pip install --user https://github.com/azkiabenington/angry-cli/releases/download/v1.0.1/angry_cli-1.0.1-py3-none-any.whl
+pip install --user https://github.com/azkiabenington/angry-cli/releases/download/v1.0.2/angry_cli-1.0.2-py3-none-any.whl
 ```
 
 *(On Ubuntu 24.04+ / Debian 12+, add `--break-system-packages` if installing outside a virtualenv.)*
 
-### Linux / macOS (From Source)
+### Linux / macOS (From Source — Works With or Without `pip`)
 
-1. **Clone and install** (`install.sh` installs `ipscan` to `~/.local/bin/ipscan`, persists `~/.local/bin` in `~/.bashrc` / `~/.zshrc`, and links `/usr/local/bin/ipscan` if desktop `/usr/bin/ipscan` is present):
+1. **Clone and install** (`install.sh` works even when `pip` is not installed by creating a direct launcher in `~/.local/bin/ipscan` and installing `python3-click` via `apt` if needed; it also links `/usr/local/bin/ipscan` when desktop `/usr/bin/ipscan` is present):
 
 ```bash
 git clone https://github.com/azkiabenington/angry-cli.git
