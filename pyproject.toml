@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "angry-cli"
+version = "1.0.0"
+description = "Headless CLI and interactive REPL powered by the real Angry IP Scanner Java engine."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.0.0",
+    "prompt-toolkit>=3.0.0",
+]
+
+[project.scripts]
+ipscan = "angry_cli.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["angry_cli*"]
+
+[tool.setuptools.package-data]
+angry_cli = [
+    "libs/*.jar",
+    "bridge/*.java",
+    "bridge/classes/.bridge_hash",
+    "bridge/classes/org/angrycli/bridge/*.class",
+]
