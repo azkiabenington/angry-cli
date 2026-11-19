@@ -97,7 +97,7 @@ class TestRealBackendEngine:
         info = ipscan_backend.get_backend_info()
         assert info["ok"] is True
         assert "Angry IP Scanner" in info["full_name"]
-        assert info["runtime"]["java_major"] >= 21
+        assert info["runtime"]["java_major"] >= 11
         assert os.path.isfile(info["runtime"]["artifact"])
 
         pinger_ids = {p["id"] for p in info["pingers"]}

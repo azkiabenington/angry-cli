@@ -1098,7 +1098,7 @@ def backend_info() -> None:
 @backend.command("verify")
 @handle_error
 def backend_verify() -> None:
-    """Verify Java 21+, Angry IP Scanner artifact, HeadlessBridge compilation, and loopback probe."""
+    """Verify Java 11+, Angry IP Scanner artifact, HeadlessBridge compilation, and loopback probe."""
     info = ipscan_backend.get_backend_info()
     proj = project_mod.create_project(name="Backend Verify", profile="quick-ping", start_ip="127.0.0.1", end_ip="127.0.0.1")
     proj["scanner_config"]["ping_count"] = 1

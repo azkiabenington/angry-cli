@@ -6,7 +6,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if ! command -v java >/dev/null 2>&1; then
-    echo "Error: Java 21+ is required. Install with: sudo apt install -y openjdk-21-jdk" >&2
+    echo "Error: Java 11+ is required. Install with: sudo apt install -y openjdk-11-jdk (or openjdk-21-jdk)" >&2
     exit 1
 fi
 
@@ -66,14 +66,16 @@ for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
     fi
 done
 
-# 4. Override /usr/bin/ipscan (desktop Angry IP Scanner GUI) via /usr/local/bin/ipscan
+# 4. Link /usr/local/bin/ipscan so `ipscan` is available immediately on system PATH
+#    and overrides any desktop GUI /usr/bin/ipscan
 LINKED_GLOBAL=0
 if [ -w "/usr/local/bin" ]; then
     ln -sf "$LOCAL_BIN" /usr/local/bin/ipscan && LINKED_GLOBAL=1
+elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+    sudo ln -sf "$LOCAL_BIN" /usr/local/bin/ipscan && LINKED_GLOBAL=1
 elif [ -x "/usr/bin/ipscan" ] || [ "${1:-}" = "--global" ]; then
     echo ""
-    echo "Notice: Found existing desktop GUI binary at /usr/bin/ipscan."
-    echo "Linking /usr/local/bin/ipscan -> $LOCAL_BIN so 'ipscan' runs angry-cli (headless) first..."
+    echo "Notice: Linking /usr/local/bin/ipscan -> $LOCAL_BIN so 'ipscan' runs angry-cli (headless) first..."
     if command -v sudo >/dev/null 2>&1 && sudo ln -sf "$LOCAL_BIN" /usr/local/bin/ipscan; then
         LINKED_GLOBAL=1
     else

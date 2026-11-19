@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="angry-cli",
-    version="1.0.3",
+    version="1.1.0",
     description="Headless CLI and interactive REPL powered by the real Angry IP Scanner Java engine.",
     packages=find_packages(include=["angry_cli*"]),
     package_data={

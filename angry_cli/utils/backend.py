@@ -115,11 +115,11 @@ def _candidate_java_homes() -> List[Path]:
     return homes
 
 
-def find_java(min_major: int = 21, require_javac: bool = False) -> Dict[str, Any]:
-    """Locate a Java 21+ runtime (and optionally javac compiler).
+def find_java(min_major: int = 11, require_javac: bool = False) -> Dict[str, Any]:
+    """Locate a Java 11+ runtime (and optionally javac compiler).
 
     Args:
-        min_major: Minimum required Java major version (Angry IP Scanner needs 21+).
+        min_major: Minimum required Java major version (bundled engine targets Java 11+).
         require_javac: If True, only return a JDK that also provides javac.
 
     Returns:
@@ -134,7 +134,18 @@ def find_java(min_major: int = 21, require_javac: bool = False) -> Dict[str, Any
 
     env_java = os.environ.get("IPSCAN_JAVA")
     if env_java:
-        candidates.append(Path(env_java))
+        cand = Path(env_java)
+        if cand.is_file():
+            major = _parse_java_major(str(cand))
+            javac_cand = cand.parent / ("javac" + exe_suffix)
+            javac_path = str(javac_cand) if javac_cand.is_file() else None
+            if major is not None and major >= min_major and (not require_javac or javac_path):
+                return {
+                    "java": str(cand),
+                    "javac": javac_path,
+                    "major_version": major,
+                }
+        candidates.append(cand)
 
     for home in _candidate_java_homes():
         candidates.append(home / "bin" / f"java{exe_suffix}")
@@ -167,12 +178,12 @@ def find_java(min_major: int = 21, require_javac: bool = False) -> Dict[str, Any
             "javac": javac_path,
             "major_version": major,
         }
-        # Prefer Java 21 LTS (or JDK with javac) when available
+        # Prefer newest LTS / JDK with javac when multiple Java 11+ runtimes exist
         if best is None:
             best = info
         elif info["javac"] and not best["javac"]:
             best = info
-        elif major == 21 and best["major_version"] != 21 and bool(info["javac"]) == bool(best["javac"]):
+        elif major > best["major_version"] and bool(info["javac"]) == bool(best["javac"]):
             best = info
 
     if best is not None:
@@ -180,9 +191,9 @@ def find_java(min_major: int = 21, require_javac: bool = False) -> Dict[str, Any
 
     kind = "JDK" if require_javac else "Java"
     raise RuntimeError(
-        f"Angry IP Scanner requires {kind} {min_major}+, which was not found.\n"
+        f"angry-cli requires {kind} {min_major}+, which was not found.\n"
         f"Install Java {min_major}+ with:\n"
-        f"  Ubuntu/Debian: sudo apt install openjdk-21-jdk\n"
+        f"  Ubuntu/Debian: sudo apt install openjdk-21-jdk  (or openjdk-11-jdk)\n"
         f"  Windows:       winget install EclipseAdoptium.Temurin.21.JDK\n"
         f"  macOS:         brew install openjdk@21\n"
         f"Or set IPSCAN_JAVA=/path/to/java."
@@ -388,11 +399,11 @@ def ensure_bridge_compiled(ipscan_classpath: List[str]) -> str:
         target_dir = cache_classes
         target_dir.mkdir(parents=True, exist_ok=True)
 
-    jdk = find_java(min_major=21, require_javac=True)
+    jdk = find_java(min_major=11, require_javac=True)
     cp_str = os.pathsep.join(ipscan_classpath)
     cmd = [
         jdk["javac"],
-        "--release", "21",
+        "--release", "11",
         "-cp", cp_str,
         "-d", str(target_dir),
         str(src_dir / "InMemoryPreferencesFactory.java"),
@@ -410,7 +421,7 @@ def ensure_bridge_compiled(ipscan_classpath: List[str]) -> str:
 
 def _invoke_bridge(action: str, payload: Optional[Dict[str, Any]] = None, timeout: int = 300) -> Dict[str, Any]:
     """Execute HeadlessBridge with the real Angry IP Scanner engine."""
-    java_info = find_java(min_major=21, require_javac=False)
+    java_info = find_java(min_major=11, require_javac=False)
     artifact_info = find_ipscan_artifact()
     bridge_classes = ensure_bridge_compiled(artifact_info["classpath"])
 
@@ -478,7 +489,7 @@ def _invoke_bridge(action: str, payload: Optional[Dict[str, Any]] = None, timeou
 
 def get_backend_info() -> Dict[str, Any]:
     """Query the real Angry IP Scanner engine for version, pingers, fetchers, exporters."""
-    java_info = find_java(min_major=21)
+    java_info = find_java(min_major=11)
     artifact_info = find_ipscan_artifact()
     bridge_info = _invoke_bridge("info", timeout=60)
     bridge_info["runtime"] = {
@@ -519,7 +530,7 @@ def run_native_cli(
     Prefer headless ``scan run`` / ``export render`` for server/agent workflows.
     """
     artifact_info = find_ipscan_artifact()
-    java_info = find_java(min_major=21)
+    java_info = find_java(min_major=11)
 
     flags = ""
     if auto_start:
