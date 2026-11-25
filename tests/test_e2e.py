@@ -375,6 +375,8 @@ class TestCLISubprocess:
         data = json.loads(r.stdout)
         assert data["ok"] is True
         assert data["scan"]["stats"]["with_ports_count"] == 1
+        assert any(f["id"] == "fetcher.hostname" for f in data["scan"]["fetchers"])
+        assert "fetcher.hostname" in data["scan"]["results"][0]["values"]
         assert os.path.isfile(out_csv) and os.path.getsize(out_csv) > 0
         print(f"\n  Quick scan CSV: {out_csv} ({os.path.getsize(out_csv):,} bytes)")
 

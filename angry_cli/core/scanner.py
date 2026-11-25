@@ -1,7 +1,11 @@
 """Scan orchestration invoking the real Angry IP Scanner Java backend."""
 
+from concurrent.futures import ThreadPoolExecutor
 import copy
 from datetime import datetime, timezone
+import re
+import shutil
+import subprocess
 from typing import Any, Dict, List, Optional
 
 from angry_cli.utils import backend as ipscan_backend
@@ -9,6 +13,101 @@ from angry_cli.utils import backend as ipscan_backend
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _ensure_hostname_fetcher(selected_fetchers: List[str]) -> List[str]:
+    """Ensure ``fetcher.hostname`` is always included in every scan."""
+    fetchers = list(selected_fetchers)
+    if "fetcher.hostname" in fetchers:
+        return fetchers
+    if "fetcher.ping" in fetchers:
+        idx = fetchers.index("fetcher.ping") + 1
+    elif "fetcher.ip" in fetchers:
+        idx = fetchers.index("fetcher.ip") + 1
+    else:
+        idx = 0
+    fetchers.insert(idx, "fetcher.hostname")
+    return fetchers
+
+
+def _resolve_avahi_hostnames(ips: List[str], timeout: float = 1.5) -> Dict[str, str]:
+    """Resolve LAN ``.local`` mDNS hostnames in parallel via ``avahi-resolve -a``."""
+    avahi_bin = shutil.which("avahi-resolve")
+    if not avahi_bin or not ips:
+        return {}
+
+    def _query(ip: str) -> Optional[str]:
+        try:
+            proc = subprocess.run(
+                [avahi_bin, "-a", ip],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                timeout=timeout,
+            )
+            if proc.returncode != 0:
+                return None
+            out = (proc.stdout or "").strip()
+            if not out:
+                return None
+            parts = out.split()
+            name = parts[-1].strip() if parts else ""
+            if name and name != ip:
+                return name
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+        return None
+
+    resolved: Dict[str, str] = {}
+    workers = min(48, len(ips))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for ip, name in zip(ips, pool.map(_query, ips)):
+            if name:
+                resolved[ip] = name
+    return resolved
+
+
+def _extract_netbios_hostname(netbios_value: Any) -> Optional[str]:
+    """Extract computer name from a NetBIOS string like ``DOMAIN\\HOST [MAC]``."""
+    if not netbios_value:
+        return None
+    text = str(netbios_value).strip()
+    if "\\" not in text:
+        return None
+    host_part = text.split("\\", 1)[1]
+    host_part = re.sub(r"\s*\[[^\]]*\]\s*$", "", host_part).strip()
+    return host_part or None
+
+
+def _enrich_hostnames(results: List[Dict[str, Any]], scanner_config: Dict[str, Any]) -> None:
+    """Fill missing ``fetcher.hostname`` values on alive hosts using NetBIOS and Avahi mDNS."""
+    na_text = str(scanner_config.get("not_available_text", "[n/a]"))
+    ns_text = str(scanner_config.get("not_scanned_text", "[n/s]"))
+    empty_markers = {"", na_text, ns_text}
+
+    unresolved_rows: List[Dict[str, Any]] = []
+    for row in results:
+        if row.get("type") not in ("ALIVE", "WITH_PORTS"):
+            continue
+        ip = row.get("ip", "")
+        values = row.setdefault("values", {})
+        cur = values.get("fetcher.hostname")
+        cur_str = "" if cur is None else str(cur).strip()
+        if cur_str in empty_markers or cur_str == ip:
+            nb_host = _extract_netbios_hostname(values.get("fetcher.netbios"))
+            if nb_host:
+                values["fetcher.hostname"] = nb_host
+            else:
+                unresolved_rows.append(row)
+
+    if not unresolved_rows:
+        return
+
+    avahi_map = _resolve_avahi_hostnames([row["ip"] for row in unresolved_rows if row.get("ip")])
+    for row in unresolved_rows:
+        ip = row.get("ip", "")
+        if ip in avahi_map:
+            row["values"]["fetcher.hostname"] = avahi_map[ip]
 
 
 def build_bridge_request(
@@ -21,10 +120,11 @@ def build_bridge_request(
     if not target or "feeder" not in target:
         raise ValueError("Project has no valid scan target configured.")
 
+    selected = _ensure_hostname_fetcher(project.get("selected_fetchers", ["fetcher.ip"]))
     req: Dict[str, Any] = {
         "target": target,
         "scanner_config": copy.deepcopy(project.get("scanner_config", {})),
-        "selected_fetchers": list(project.get("selected_fetchers", ["fetcher.ip"])),
+        "selected_fetchers": selected,
         "fetcher_prefs": copy.deepcopy(project.get("fetcher_prefs", {})),
         "comments": copy.deepcopy(project.get("comments", {})),
     }
@@ -50,8 +150,11 @@ def execute_scan(
     Returns:
         Structured scan record stored in ``project['last_scan']``.
     """
-    req = build_bridge_request(project, target_override=target_override, export_spec=export_spec)
+    req = build_bridge_request(project, target_override=target_override, export_spec=None)
     raw = ipscan_backend.run_scan(req, timeout=timeout)
+
+    results = raw.get("results", [])
+    _enrich_hostnames(results, req["scanner_config"])
 
     scan_record: Dict[str, Any] = {
         "timestamp": _now_iso(),
@@ -62,10 +165,20 @@ def execute_scan(
         "pinger": raw.get("pinger"),
         "fetchers": raw.get("fetchers", []),
         "stats": raw.get("stats", {}),
-        "results": raw.get("results", []),
+        "results": results,
     }
-    if "export" in raw:
-        scan_record["export"] = raw["export"]
+    if export_spec is not None:
+        used_fetcher_ids = [f["id"] for f in scan_record["fetchers"] if "id" in f] or list(req["selected_fetchers"])
+        exp_res = ipscan_backend.run_export({
+            "scanner_config": copy.deepcopy(req["scanner_config"]),
+            "selected_fetchers": used_fetcher_ids,
+            "fetcher_prefs": copy.deepcopy(req["fetcher_prefs"]),
+            "feeder_name": scan_record["feeder_name"] or "IP Range",
+            "feeder_info": scan_record["feeder_info"] or "CLI Export",
+            "results": results,
+            "export": copy.deepcopy(export_spec),
+        })
+        scan_record["export"] = exp_res["export"]
 
     project["last_scan"] = scan_record
     history = project.setdefault("scan_history", [])

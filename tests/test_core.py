@@ -15,6 +15,7 @@ from angry_cli.core import fetchers as fetchers_mod
 from angry_cli.core import metadata as metadata_mod
 from angry_cli.core import project as project_mod
 from angry_cli.core import results as results_mod
+from angry_cli.core import scanner as scanner_mod
 from angry_cli.core import targets as targets_mod
 from angry_cli.core.session import Session
 
@@ -505,3 +506,67 @@ class TestMetadataAndExportUnit:
         assert info["with_ports_count"] == 1
         assert proj["last_scan"]["results"][0]["ip"] == "192.168.1.1"
         assert proj["last_scan"]["results"][0]["values"]["fetcher.ports"] == "22,80"
+
+
+# =============================================================================
+# MANDATORY HOSTNAME & MDNS / NETBIOS ENRICHMENT TESTS
+# =============================================================================
+
+class TestMandatoryHostname:
+    def test_build_bridge_request_always_includes_hostname(self):
+        proj = project_mod.create_project()
+        fetchers_mod.select_fetchers(proj, ["ip", "ping", "ports"])
+        req = scanner_mod.build_bridge_request(proj)
+        assert req["selected_fetchers"] == [
+            "fetcher.ip",
+            "fetcher.ping",
+            "fetcher.hostname",
+            "fetcher.ports",
+        ]
+
+    def test_enrich_hostnames_netbios_and_avahi_fallback(self, monkeypatch):
+        import subprocess
+        from types import SimpleNamespace
+
+        monkeypatch.setattr(scanner_mod.shutil, "which", lambda cmd: "/usr/bin/avahi-resolve" if cmd == "avahi-resolve" else None)
+
+        def fake_run(cmd, **kwargs):
+            ip = cmd[-1]
+            if ip == "111.0.8.83":
+                return SimpleNamespace(returncode=0, stdout="111.0.8.83\tpm3-lulu-00u.local\n", stderr="")
+            raise subprocess.TimeoutExpired(cmd, kwargs.get("timeout", 1.5))
+
+        monkeypatch.setattr(scanner_mod.subprocess, "run", fake_run)
+
+        rows = [
+            {
+                "ip": "111.0.8.83",
+                "type": "WITH_PORTS",
+                "values": {"fetcher.ip": "111.0.8.83", "fetcher.hostname": "[n/a]", "fetcher.netbios": "[n/a]"},
+            },
+            {
+                "ip": "111.0.8.77",
+                "type": "WITH_PORTS",
+                "values": {
+                    "fetcher.ip": "111.0.8.77",
+                    "fetcher.hostname": "[n/a]",
+                    "fetcher.netbios": "WORKGROUP\\DESKTOP-57G7NBQ [E0-D5-5E-FB-FE-B4]",
+                },
+            },
+            {
+                "ip": "111.0.8.57",
+                "type": "WITH_PORTS",
+                "values": {"fetcher.ip": "111.0.8.57", "fetcher.hostname": "[n/a]"},
+            },
+            {
+                "ip": "111.0.8.99",
+                "type": "DEAD",
+                "values": {"fetcher.ip": "111.0.8.99", "fetcher.hostname": "[n/s]"},
+            },
+        ]
+
+        scanner_mod._enrich_hostnames(rows, {"not_available_text": "[n/a]", "not_scanned_text": "[n/s]"})
+        assert rows[0]["values"]["fetcher.hostname"] == "pm3-lulu-00u.local"
+        assert rows[1]["values"]["fetcher.hostname"] == "DESKTOP-57G7NBQ"
+        assert rows[2]["values"]["fetcher.hostname"] == "[n/a]"
+        assert rows[3]["values"]["fetcher.hostname"] == "[n/s]"

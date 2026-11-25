@@ -56,7 +56,7 @@ flowchart LR
 Install `ipscan` directly without cloning the repo (requires Java 11+ and Python 3.6+):
 
 ```bash
-pip install --user https://github.com/azkiabenington/angry-cli/releases/download/v1.1.1/angry_cli-1.1.1-py3-none-any.whl
+pip install --user https://github.com/azkiabenington/angry-cli/releases/download/v1.1.2/angry_cli-1.1.2-py3-none-any.whl
 ```
 
 *(On Ubuntu 24.04+ / Debian 12+, add `--break-system-packages` if installing outside a virtualenv.)*
